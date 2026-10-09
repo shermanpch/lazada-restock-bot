@@ -42,8 +42,8 @@ each in its own tab: `node watch.mjs bundle etb` (or `bundle+etb`).
 
 | Option | What it does |
 | --- | --- |
-| `--interval N` | Seconds between stock checks in each tab (default 1), varied a little each time. |
-| `--window S-E` | Only check from second S to second E of each minute, e.g. `59-30` for restocks on the minute. |
+| `--interval N` | Seconds between stock checks in each tab (default 1), varied a little each time, and each minute a little quicker or slower overall. |
+| `--window S-E` | Only check from second S to second E of each minute (default `59-20`, for restocks on the minute). Each minute it opens within a second after S and closes somewhere in the last 40% of the range, so it isn't the same every minute. `--window all` checks all the time. |
 | `--qty N` | How many to buy (default 1). |
 | `--check` | Print each product's current stock state once and exit. |
 | `--simulate-order` | On checkout, find Place Order and click it exactly as `--place-order` would, but stop the click before the page sees it. Nothing is ordered. |
@@ -53,7 +53,7 @@ Examples:
 
 ```sh
 node watch.mjs bundle --check                      # is it in stock right now?
-node watch.mjs bundle etb --window 59-30           # watch two products around each minute mark
+node watch.mjs bundle etb                          # watch two products around each minute mark
 node watch.mjs test --qty 6 --simulate-order       # dry run of the whole path on an in-stock item
 node watch.mjs bundle --qty 2 --place-order        # buy 2 the moment it restocks
 ```

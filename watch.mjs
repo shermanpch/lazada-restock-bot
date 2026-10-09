@@ -3,7 +3,7 @@
 // via Buy Now. It stops on the checkout page for you to place the order, unless --place-order.
 //
 // Usage:
-//   node watch.mjs <product> [<product> ...] [--interval 1] [--window 59-30] [--qty 1]
+//   node watch.mjs <product> [<product> ...] [--interval 1] [--window 59-20 | all] [--qty 1]
 //                  [--simulate-order | --place-order] [--check]
 //
 //   A product is a name from products.yaml (next to this script), or a product URL. Names can also
@@ -11,11 +11,14 @@
 //   Each product gets its own tab in the same Chrome window, and all are watched at once.
 //
 //   --interval N      seconds between stock checks in each tab, varied like a person's (mostly
-//                     0.7-1.4x, sometimes about half or double). Default 1.
+//                     0.7-1.4x, sometimes about half or double), and each minute brisker or
+//                     lazier (0.75-1.35x). Default 1.
 //                     Decimals allowed; 0 means back to back (a check takes ~0.2-0.7 s).
 //   --window S-E      only check from second S of each minute to second E, wrapping past :00, so
 //                     59-30 checks from 12:59:59 to 1:00:30, then 1:00:59 to 1:01:30, and so on.
-//                     Default: check all the time.
+//                     Each minute the window is narrowed a little at random: it opens within a
+//                     second after S and closes somewhere in the last 40% of the range.
+//                     Default 59-20; "all" checks all the time.
 //   --qty N           how many to buy. Default 1.
 //   --simulate-order  on checkout, find the Place Order button and click it exactly as
 //                     --place-order would, but stop the click before the page sees it (and block
@@ -65,9 +68,10 @@ const qtyIdx = args.indexOf("--qty");
 const qty = qtyIdx >= 0 ? Number(args[qtyIdx + 1]) : 1;
 const simulateOrder = args.includes("--simulate-order");
 const placeOrderFlag = args.includes("--place-order");
-const useWindow = windowIdx >= 0;
+const windowArg = windowIdx >= 0 ? args[windowIdx + 1] : "59-20";
+const useWindow = windowArg !== "all";
 const [, winStart, winEnd] = (
-  args[windowIdx + 1]?.match(/^(\d{1,2})-(\d{1,2})$/) ?? []
+  windowArg?.match(/^(\d{1,2})-(\d{1,2})$/) ?? []
 ).map(Number);
 // Two CAPTCHAs within this window trigger a cooldown with no checks.
 const CHALLENGE_WINDOW_MS = 5 * 60000;
@@ -135,7 +139,7 @@ if (
   badWindow
 ) {
   fail(
-    "Usage: node watch.mjs <name from products.yaml | product url ending in -i<item>-s<sku>.html> [...] [--interval 1] [--window 59-30] [--qty 1] [--simulate-order | --place-order] [--check]",
+    "Usage: node watch.mjs <name from products.yaml | product url ending in -i<item>-s<sku>.html> [...] [--interval 1] [--window 59-20 | all] [--qty 1] [--simulate-order | --place-order] [--check]",
   );
 }
 
@@ -203,16 +207,32 @@ const targets = products.map(({ name, url }, i) => {
   };
 });
 
-// ms until the next --window opens, or 0 while inside one (or with no --window).
+// Each minute's --window is a fresh random slice of S-E, shared by all tabs, so checks don't
+// start and stop on the same second every minute. It opens within the first second after S (so
+// 59-20 always covers :00) and closes anywhere in the last 40% of the range.
 // Seconds-in-minute is the same in UTC and local time, so Date.now() works directly.
+const winLen = ((winEnd - winStart + 60) % 60) * 1000;
+let win = null;
+
+// The window for the first occurrence of S-E that hasn't ended by `after`, as absolute times.
+function pickWindow(after) {
+  let open = after - (after % 60000) + winStart * 1000 - 60000;
+  while (open + winLen <= after) open += 60000;
+  return {
+    start: open + rand(0, Math.min(1000, winLen * 0.4)),
+    end: open + winLen - rand(0, winLen * 0.4),
+    rangeEnd: open + winLen,
+  };
+}
+
+// ms until the next --window opens, or 0 while inside one (or with --window all).
 function msUntilWindow() {
   if (!useWindow) return 0;
-  const ms = Date.now() % 60000;
-  const start = winStart * 1000,
-    end = winEnd * 1000;
-  const inside =
-    start < end ? ms >= start && ms < end : ms >= start || ms < end;
-  return inside ? 0 : (start - ms + 60000) % 60000;
+  const now = Date.now();
+  // Once a window closes, move on to the next minute's, never reopen this one.
+  while (!win || now >= win.end)
+    win = pickWindow(win ? Math.max(now, win.rangeEnd) : now);
+  return Math.max(0, win.start - now);
 }
 
 // --- Human-like idle activity ---
@@ -513,7 +533,22 @@ function humanGap(paceSec) {
   const gauss =
     Math.sqrt(-2 * Math.log(1 - Math.random())) *
     Math.cos(2 * Math.PI * Math.random());
-  return paceSec * 1000 * Math.min(2.5, Math.max(0.4, Math.exp(0.35 * gauss)));
+  return (
+    paceSec *
+    1000 *
+    paceDrift() *
+    Math.min(2.5, Math.max(0.4, Math.exp(0.35 * gauss)))
+  );
+}
+
+// A person isn't equally brisk all the time: each --window (or, with --window all, every 40-80 s)
+// gets its own pace of 0.75-1.35x, so some minutes are quick and some lazy.
+let drift = { factor: 1, until: 0, win: undefined };
+function paceDrift() {
+  const now = Date.now();
+  if (useWindow ? drift.win !== win : now >= drift.until)
+    drift = { factor: rand(0.75, 1.35), until: now + rand(40000, 80000), win };
+  return drift.factor;
 }
 
 // Tabs take turns, as one person refreshing several tabs would: no two checks start within
@@ -1138,7 +1173,7 @@ const pad = (s) => String(s).padStart(2, "0");
 log(
   `Checking every ~${pace.base}s in each of ${targets.length} tab(s)` +
     (useWindow
-      ? `, only from :${pad(winStart)} to :${pad(winEnd)} of each minute`
+      ? `, only within :${pad(winStart)} to :${pad(winEnd)} of each minute (varied each minute)`
       : ""),
 );
 fidget();
