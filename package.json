@@ -1,0 +1,24 @@
+{
+  "name": "lazada-restock-bot",
+  "version": "1.0.0",
+  "description": "Watches Lazada products and, the moment one is back in stock, goes straight to checkout (and optionally places the order).",
+  "type": "module",
+  "scripts": {
+    "watch": "node watch.mjs"
+  },
+  "keywords": [
+    "lazada",
+    "restock",
+    "playwright",
+    "checkout"
+  ],
+  "author": "shermanpch",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "playwright": "^1.63.0",
+    "yaml": "^2.9.1"
+  }
+}

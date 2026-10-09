@@ -1,0 +1,9 @@
+# Product links for watch.mjs, as "name: link". Run with the names instead of the links:
+#   node watch.mjs bundle etb
+#   node watch.mjs bundle+etb --window 59-30 --interval 2
+# Each link is a product page URL ending in -i<item>-s<sku>.html. Add more lines the same way.
+
+bundle: https://www.lazada.sg/products/pdp-i13858018841-s124858765958.html
+etb: https://www.lazada.sg/products/pdp-i13933878257-s124956048317.html
+tin: https://www.lazada.sg/products/pokemon-trading-card-game-30th-celebration-mini-tins-limit-to-4-per-person-regardless-of-design-i13930327128-s124957705068.html?
+test: https://www.lazada.sg/products/pdp-i3103939080-s23135742044.html

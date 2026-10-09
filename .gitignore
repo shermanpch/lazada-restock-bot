@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# Chrome profile used by the watcher: holds your logged-in Lazada session. Never commit it.
+.chrome-profile/
+
+# Per-run logs
+logs/
+
+.DS_Store
