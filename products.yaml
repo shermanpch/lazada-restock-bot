@@ -4,6 +4,15 @@
 # Each link is a product page URL ending in -i<item>-s<sku>.html. Add more lines the same way.
 
 bundle: https://www.lazada.sg/products/pdp-i13858018841-s124858765958.html
-etb: https://www.lazada.sg/products/pdp-i13933878257-s124956048317.html
-tin: https://www.lazada.sg/products/pokemon-trading-card-game-30th-celebration-mini-tins-limit-to-4-per-person-regardless-of-design-i13930327128-s124957705068.html?
+30th-etb: https://www.lazada.sg/products/pdp-i13933878257-s124956048317.html
+dr-etb: https://www.lazada.sg/products/i13883561751-s124885281200.html
+mini-tin: https://www.lazada.sg/products/pokemon-trading-card-game-30th-celebration-mini-tins-limit-to-4-per-person-regardless-of-design-i13930327128-s124957705068.html?
+tin-1: https://www.lazada.sg/products/i13855645417-s124858893086.html
+tin-2: https://www.lazada.sg/products/i13855633456-s124868080316.html
+tech-1: https://www.lazada.sg/products/i3622595424-s23933366912.html
+tech-2: https://www.lazada.sg/products/i13858046508-s124858849745.html
+tech-3: https://www.lazada.sg/products/i13858112099-s124868062643.html
+box-1:  https://www.lazada.sg/products/i13858092221-s124858791932.html
+box-2: https://www.lazada.sg/products/i13855645416-s124858847315.html
+poster: https://www.lazada.sg/products/i13855641431-s124858919139.html
 test: https://www.lazada.sg/products/pdp-i3103939080-s23135742044.html

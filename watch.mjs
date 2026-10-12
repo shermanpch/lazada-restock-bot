@@ -77,8 +77,9 @@ const [, winStart, winEnd] = (
 const CHALLENGE_WINDOW_MS = 5 * 60000;
 const COOLDOWN_MS = 10 * 60000;
 
-// Product URLs end in "-i<itemId>-s<skuId>.html"; both go into the Buy Now request.
-const PRODUCT_RE = /-i(\d+)-s(\d+)\.html/;
+// Product URLs end in "-i<itemId>-s<skuId>.html" (or "/i<itemId>-s<skuId>.html" for the short
+// form); both IDs go into the Buy Now request.
+const PRODUCT_RE = /[-/]i(\d+)-s(\d+)\.html/;
 const isProductUrl = (u) =>
   typeof u === "string" &&
   URL.canParse(u) &&
