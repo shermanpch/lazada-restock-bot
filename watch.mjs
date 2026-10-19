@@ -657,6 +657,74 @@ async function clickBuyNowButton(t) {
     );
 }
 
+// Logs Lazada's answer to Buy Now as the checkout page got it. The page embeds the answer as
+// window.__initData__ and shows the order only when its `success` is set; otherwise it shows
+// errorCode.displayMessage (or a generic "something went wrong"). Notices that come with an order,
+// such as "the stock has changed", are `tips` on one of its components. With an order this is one
+// quick read of the page, so it can run beside --place-order without holding it up. The full answer
+// then holds your address and phone number, so only a failed one is logged in full. Never throws.
+async function recordCheckout(t, reloaded = false) {
+  const { page } = t;
+  const head = reloaded ? "Checkout response after a reload" : "Checkout response";
+  try {
+    const r = await page.evaluate(() => {
+      const d = window.__initData__;
+      return {
+        status: performance.getEntriesByType("navigation")[0]?.responseStatus,
+        found: !!d,
+        success: !!d?.success,
+        error: d?.errorCode,
+        full: d && !d.success ? JSON.stringify(d).slice(0, 2000) : null,
+        tips: Object.values(d?.module?.data ?? {}).flatMap((c) =>
+          (c?.fields?.tips ?? []).map((tip) => ({
+            kind: c.fields.bizType,
+            text: [
+              tip.title,
+              tip.msg,
+              tip.dialog?.title,
+              ...(tip.dialog?.content ?? []).map((x) => x.text),
+            ]
+              .filter(Boolean)
+              .join(" - "),
+          })),
+        ),
+      };
+    });
+    const http = `HTTP ${r.status || "?"}`;
+    if (r.success) {
+      t.log(`${head}: order loaded (${http}).`);
+      for (const tip of r.tips)
+        t.log(`Checkout notice (${tip.kind ?? "no type"}): ${tip.text}`);
+      return;
+    }
+    t.log(
+      r.found
+        ? `${head}: ERROR ${r.error?.key ?? "(no code)"}: ${r.error?.displayMessage ?? "(no message)"} (${http}).`
+        : `${head}: no order data on ${page.url().split("?")[0]} (${http}).`,
+    );
+    if (r.full) t.log(`Checkout response data: ${r.full}`);
+    // What the page shows, as you saw it; it can draw a moment after the HTML arrives.
+    const text = await page
+      .waitForFunction(
+        () =>
+          (document.getElementById("container") ?? document.body)?.innerText.trim(),
+        null,
+        { polling: 250, timeout: 5000 },
+      )
+      .then(
+        (h) => h.jsonValue(),
+        () => "",
+      );
+    t.log(
+      text
+        ? `Checkout page shows: ${text.replace(/\s+/g, " ").slice(0, 500)}`
+        : "Checkout page shows no text.",
+    );
+  } catch (e) {
+    t.log(`Could not read the checkout response (${e.message.split("\n")[0]})`);
+  }
+}
+
 // Chrome runs as its own process with a debugging port, and the script attaches to it. Stopping or
 // restarting the script leaves Chrome open with its tabs, so a new run picks up where the last one
 // left off instead of opening a fresh browser (whose first page load the site usually challenges).
@@ -902,8 +970,18 @@ async function watch(t) {
       ? `On checkout ${Date.now() - t0} ms after detecting stock. Review and place the order in this tab.`
       : "Could not reach checkout automatically. Check this tab.",
   );
-  if (reached && placeOrderFlag) await placeOrder(t);
+  // Not awaited before placing the order, so it can't hold that up.
+  const recording = reached ? recordCheckout(t) : null;
+  const checkoutUrl = page.url().split("?")[0];
+  let placed = false;
+  if (reached && placeOrderFlag) placed = await placeOrder(t);
   else if (reached && simulateOrder) await simulatePlaceOrder(t);
+  // Reloading checkout (say after an error) asks Lazada again; record each answer too.
+  if (reached && !placed)
+    page.on("domcontentloaded", () => {
+      if (page.url().split("?")[0] === checkoutUrl) recordCheckout(t, true);
+    });
+  await recording;
   t.log(
     "Chrome stays open if you stop this script, so you can finish paying either way.",
   );

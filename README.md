@@ -94,6 +94,10 @@ are done; while it is open, other programs on your computer can control it throu
 
 Each run writes its log lines to `logs/<start time>.log`, one file per run.
 
+On reaching checkout, the log also records Lazada's answer: whether the order loaded and any
+notice on it (such as a stock change), or the error code and message and the text the page shows.
+It does the same each time you reload the checkout page.
+
 ## License
 
 [MIT](LICENSE)
